@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets
+.env
+
+# Data (raw scraped docs / local vector db) — keep repo light
+data/raw/
+*.db
+*.sqlite
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
