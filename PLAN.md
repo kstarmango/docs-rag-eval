@@ -36,11 +36,13 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · Claude API(LLM) · React(�
 - [x] 2026-07-24: 폴더·git 생성(`side-project/shopify-support-rag`, 독립 repo), Python 3.12.4 venv, 문서 세팅, 초기 커밋 `ee729bd`
 - [x] 2026-07-24: **corpus 변경 Shopify→n8n docs.** 이유=Shopify 헬프센터 Cloudflare 봇차단(403, requests 불가). n8n=문서 전부 마크다운 공개레포(`n8n-io/n8n-docs`)라 `git clone`으로 스크래핑 없이 확보. 성격(제품지원문서 RAG)·클라전환력 동일 + n8n=자동화툴이라 "AI자동화" 수요와 겹침. 교훈=RAG 목표인데 스크래핑 싸움 금지, 깨끗한 소스 우선.
 - [x] 2026-07-24: **수집→청킹 완성.** `data/raw/n8n-docs` clone(depth1, gitignore). `ingest/load_and_chunk.py`: 핵심 7폴더 347문서→**청크 2,535개**(평균635자). frontmatter `url`=인용출처. 헤더기준 분할+overlap150, HTML앵커 청소. 산출=`data/chunks.json`(gitignore).
-- [ ] **다음 착수점 = 임베딩 + 벡터DB(pgvector)**. 청크를 임베딩→pgvector 저장→유사검색. ⚠️Postgres+pgvector 세팅 필요(로컬설치 or Docker or 하스티드). 그 다음 검색→Claude 답변으로 1주차 마무리.
+- [x] 2026-07-24: **임베딩+벡터DB 완성.** Docker pgvector(pg16) 컨테이너 `shopify-rag-pg`. ⚠️**포트 함정**: 호스트에 기존 postgres가 5433 점유 → 인증실패. **5544로 이전**(.env DB_PORT=5544). 임베딩=fastembed 로컬무료 `bge-small-en-v1.5`(384d). `ingest/embed_and_store.py`(DB선확인+임베딩 디스크캐시 `data/embeddings.npy`). **pgvector에 2,532행**(중복3 제거)+HNSW 코사인 인덱스.
+- [ ] **다음 착수점 = 검색(retrieval)** — 질문 임베딩→pgvector 코사인 top-k. 그 다음 Claude 답변(인용+모름처리)로 **기본 루프(1주차) 완성**.
+- [ ] ★그 후 = **차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서 나옴. 반드시 엄격히 할 것.
 
-## 스택 결정 메모
-- 임베딩 모델 미정(다음): OpenAI text-embedding-3-small(싸고 무난) vs 오픈소스(무료·로컬). 비용/간편 고려해 결정.
-- 벡터DB=pgvector 확정. 세팅 방식(Docker Postgres 권장) 다음 세션 첫 결정.
+## 인프라 재현 메모 (새 세션/재부팅 후)
+- 컨테이너 꺼졌으면: `docker start shopify-rag-pg` (데이터 유지됨). 없으면 재생성(포트 5544, `CREATE EXTENSION vector`) 후 `python ingest/embed_and_store.py`(임베딩 캐시 있으면 즉시).
+- 스택 확정: fastembed(bge-small 384d) · pgvector(HNSW cosine) · Docker :5544.
 
 ## 학습 메모 (사용자 = RAG·FastAPI 처음)
 - teach-mode: 한 덩어리씩 설명하며 진행. 용어 전제 깔지 말 것.
