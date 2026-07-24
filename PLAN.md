@@ -33,8 +33,14 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · Claude API(LLM) · React(�
 - **4주**(버퍼): 케이스스터디 글·README·데모 영상
 
 ## 현재 상태 (진행 로그)
-- [x] 2026-07-24: 폴더·git 생성(`side-project/shopify-support-rag`, 독립 repo), Python 3.12.4 venv, 문서 세팅(README/PLAN/.gitignore), 초기 커밋
-- [ ] 1주차: 수집 스크립트부터 (다음 착수 지점)
+- [x] 2026-07-24: 폴더·git 생성(`side-project/shopify-support-rag`, 독립 repo), Python 3.12.4 venv, 문서 세팅, 초기 커밋 `ee729bd`
+- [x] 2026-07-24: **corpus 변경 Shopify→n8n docs.** 이유=Shopify 헬프센터 Cloudflare 봇차단(403, requests 불가). n8n=문서 전부 마크다운 공개레포(`n8n-io/n8n-docs`)라 `git clone`으로 스크래핑 없이 확보. 성격(제품지원문서 RAG)·클라전환력 동일 + n8n=자동화툴이라 "AI자동화" 수요와 겹침. 교훈=RAG 목표인데 스크래핑 싸움 금지, 깨끗한 소스 우선.
+- [x] 2026-07-24: **수집→청킹 완성.** `data/raw/n8n-docs` clone(depth1, gitignore). `ingest/load_and_chunk.py`: 핵심 7폴더 347문서→**청크 2,535개**(평균635자). frontmatter `url`=인용출처. 헤더기준 분할+overlap150, HTML앵커 청소. 산출=`data/chunks.json`(gitignore).
+- [ ] **다음 착수점 = 임베딩 + 벡터DB(pgvector)**. 청크를 임베딩→pgvector 저장→유사검색. ⚠️Postgres+pgvector 세팅 필요(로컬설치 or Docker or 하스티드). 그 다음 검색→Claude 답변으로 1주차 마무리.
+
+## 스택 결정 메모
+- 임베딩 모델 미정(다음): OpenAI text-embedding-3-small(싸고 무난) vs 오픈소스(무료·로컬). 비용/간편 고려해 결정.
+- 벡터DB=pgvector 확정. 세팅 방식(Docker Postgres 권장) 다음 세션 첫 결정.
 
 ## 학습 메모 (사용자 = RAG·FastAPI 처음)
 - teach-mode: 한 덩어리씩 설명하며 진행. 용어 전제 깔지 말 것.

@@ -7,8 +7,8 @@ __pycache__/
 # Secrets
 .env
 
-# Data (raw scraped docs / local vector db) — keep repo light
-data/raw/
+# Data (cloned docs + generated chunks/vector db) — regenerable, keep repo light
+data/
 *.db
 *.sqlite
 
