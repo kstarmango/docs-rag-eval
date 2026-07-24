@@ -37,8 +37,11 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · Claude API(LLM) · React(�
 - [x] 2026-07-24: **corpus 변경 Shopify→n8n docs.** 이유=Shopify 헬프센터 Cloudflare 봇차단(403, requests 불가). n8n=문서 전부 마크다운 공개레포(`n8n-io/n8n-docs`)라 `git clone`으로 스크래핑 없이 확보. 성격(제품지원문서 RAG)·클라전환력 동일 + n8n=자동화툴이라 "AI자동화" 수요와 겹침. 교훈=RAG 목표인데 스크래핑 싸움 금지, 깨끗한 소스 우선.
 - [x] 2026-07-24: **수집→청킹 완성.** `data/raw/n8n-docs` clone(depth1, gitignore). `ingest/load_and_chunk.py`: 핵심 7폴더 347문서→**청크 2,535개**(평균635자). frontmatter `url`=인용출처. 헤더기준 분할+overlap150, HTML앵커 청소. 산출=`data/chunks.json`(gitignore).
 - [x] 2026-07-24: **임베딩+벡터DB 완성.** Docker pgvector(pg16) 컨테이너 `shopify-rag-pg`. ⚠️**포트 함정**: 호스트에 기존 postgres가 5433 점유 → 인증실패. **5544로 이전**(.env DB_PORT=5544). 임베딩=fastembed 로컬무료 `bge-small-en-v1.5`(384d). `ingest/embed_and_store.py`(DB선확인+임베딩 디스크캐시 `data/embeddings.npy`). **pgvector에 2,532행**(중복3 제거)+HNSW 코사인 인덱스.
-- [ ] **다음 착수점 = 검색(retrieval)** — 질문 임베딩→pgvector 코사인 top-k. 그 다음 Claude 답변(인용+모름처리)로 **기본 루프(1주차) 완성**.
-- [ ] ★그 후 = **차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서 나옴. 반드시 엄격히 할 것.
+- [x] 2026-07-24: **검색(retrieval) 완성**(`a660b50`). `rag/search.py`: 질문 임베딩→pgvector 코사인 top-k. 실측 양호("error handling" 질문→top score 0.83 정확 문서). ⚠️소흠: url 없는 청크(frontmatter에 url 無)는 source_url=None → 경로로 fallback 만들기(폴리싱).
+- [ ] **다음 착수점 = [6] 답변 생성** — 검색된 청크+질문→LLM→근거인용+모름처리. **LLM=Groq 무료티어(model-agnostic 설계).** ⛔유료 Claude키 안 씀(데모=무료). → 이거 하면 **기본 루프(1주차) 완성.**
+  - 🔑 **키 위치**: 프로젝트 .env 아님 → **중앙 `~/.claude/secrets.env`의 `API_GROQ_KEY`** (레지스트리 등록됨). 코드는 `os.getenv("API_GROQ_KEY")`. ⚠️새로 추가한 거라 **새 PowerShell에서 claude 재시작해야 env에 뜸**(현 세션엔 아직 없음). Groq는 OpenAI 호환 → `openai` SDK로 `base_url=https://api.groq.com/openai/v1` 쓰면 편함. 모델 예: `llama-3.3-70b-versatile`.
+  - ⚠️키가 채팅에 노출됐었음(Stop훅+secrets.env 등록으로 redact 커버). 걱정되면 Groq콘솔서 revoke→새키→secrets.env 교체.
+- [ ] ★그 후 = **차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서. 반드시 엄격히.
 
 ## 인프라 재현 메모 (새 세션/재부팅 후)
 - 컨테이너 꺼졌으면: `docker start shopify-rag-pg` (데이터 유지됨). 없으면 재생성(포트 5544, `CREATE EXTENSION vector`) 후 `python ingest/embed_and_store.py`(임베딩 캐시 있으면 즉시).
