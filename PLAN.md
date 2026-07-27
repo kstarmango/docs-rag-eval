@@ -38,10 +38,10 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · Claude API(LLM) · React(�
 - [x] 2026-07-24: **수집→청킹 완성.** `data/raw/n8n-docs` clone(depth1, gitignore). `ingest/load_and_chunk.py`: 핵심 7폴더 347문서→**청크 2,535개**(평균635자). frontmatter `url`=인용출처. 헤더기준 분할+overlap150, HTML앵커 청소. 산출=`data/chunks.json`(gitignore).
 - [x] 2026-07-24: **임베딩+벡터DB 완성.** Docker pgvector(pg16) 컨테이너 `shopify-rag-pg`. ⚠️**포트 함정**: 호스트에 기존 postgres가 5433 점유 → 인증실패. **5544로 이전**(.env DB_PORT=5544). 임베딩=fastembed 로컬무료 `bge-small-en-v1.5`(384d). `ingest/embed_and_store.py`(DB선확인+임베딩 디스크캐시 `data/embeddings.npy`). **pgvector에 2,532행**(중복3 제거)+HNSW 코사인 인덱스.
 - [x] 2026-07-24: **검색(retrieval) 완성**(`a660b50`). `rag/search.py`: 질문 임베딩→pgvector 코사인 top-k. 실측 양호("error handling" 질문→top score 0.83 정확 문서). ⚠️소흠: url 없는 청크(frontmatter에 url 無)는 source_url=None → 경로로 fallback 만들기(폴리싱).
-- [ ] **다음 착수점 = [6] 답변 생성** — 검색된 청크+질문→LLM→근거인용+모름처리. **LLM=Groq 무료티어(model-agnostic 설계).** ⛔유료 Claude키 안 씀(데모=무료). → 이거 하면 **기본 루프(1주차) 완성.**
-  - 🔑 **키 위치**: 프로젝트 .env 아님 → **중앙 `~/.claude/secrets.env`의 `API_GROQ_KEY`** (레지스트리 등록됨). 코드는 `os.getenv("API_GROQ_KEY")`. ⚠️새로 추가한 거라 **새 PowerShell에서 claude 재시작해야 env에 뜸**(현 세션엔 아직 없음). Groq는 OpenAI 호환 → `openai` SDK로 `base_url=https://api.groq.com/openai/v1` 쓰면 편함. 모델 예: `llama-3.3-70b-versatile`.
-  - ⚠️키가 채팅에 노출됐었음(Stop훅+secrets.env 등록으로 redact 커버). 걱정되면 Groq콘솔서 revoke→새키→secrets.env 교체.
-- [ ] ★그 후 = **차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서. 반드시 엄격히.
+- [x] 2026-07-27: **[6] 답변 생성 완성 (`5f15cad`) → 기본 루프(1주차) 완성.** `rag/answer.py`: 검색→번호매긴 컨텍스트→Groq(`llama-3.3-70b-versatile`, OpenAI호환)→인용[n]+출처URL. `openai 2.48.0` venv설치+requirements freeze. 실측: 정상질문 "error handling"→인용3개 정답(top 0.83), 범위밖 "프랑스 수도"→"모른다".
+  - 🔑 키: 중앙 `~/.claude/secrets.env`의 `API_GROQ_KEY`. 코드=`os.getenv("API_GROQ_KEY")`. ⚠️현 셸이 키추가 前 시작이라 env 미로드 → 실행 시 secrets.env를 명령 안에서 인라인 로드(값 미출력)해 python에 주입. 재시작 불필요.
+  - ⚠️**발견(차별화층 재료)**: 모름처리 2겹(유사도컷 `MIN_SCORE=0.35` + LLM 컨텍스트-only 프롬프트) 중 **점수컷은 사실상 무력** — bge-small은 무관 영어도 코사인 0.4~0.5대에 몰려 안 떨어짐. 실제 안전망=LLM 거부. → eval 하네스로 모름처리 정확도 수치화할 것. 흠: (b)도 `grounded=True`로 찍힘(=LLM에 보냄 뜻일뿐) → refusal 감지로 라벨 다듬기.
+- [ ] ★**다음 = 차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서. 반드시 엄격히. 착수점=Q&A 20~30개 테스트셋→retrieval hit@k + 모름처리 정확도 수치화.
 
 ## 인프라 재현 메모 (새 세션/재부팅 후)
 - 컨테이너 꺼졌으면: `docker start shopify-rag-pg` (데이터 유지됨). 없으면 재생성(포트 5544, `CREATE EXTENSION vector`) 후 `python ingest/embed_and_store.py`(임베딩 캐시 있으면 즉시).
