@@ -1,9 +1,8 @@
-# Shopify Support Assistant (RAG)
+# CITE — a grounded, evaluated RAG assistant
 
-A production-minded RAG (Retrieval-Augmented Generation) assistant that answers
-questions from the **public Shopify Help Center**, with **grounded citations**,
-**"I don't know" handling** (no hallucinated answers), and a **retrieval
-evaluation harness** that measures answer quality with real numbers.
+**CITE** answers questions from a documentation corpus with **grounded citations**,
+explicit **"I don't know" handling** (no hallucinated answers), and a
+**retrieval evaluation harness** that measures answer quality with real numbers.
 
 > Portfolio project demonstrating end-to-end AI application engineering:
 > document ingestion → chunking → embeddings → vector search → grounded
@@ -11,32 +10,53 @@ evaluation harness** that measures answer quality with real numbers.
 
 ## Why this exists
 
-Most "chat with your docs" demos stop at "it replies." The hard part of RAG is
+Most "chat with your docs" demos stop at "it replies." The hard parts of RAG are
 the **retrieval** and **honesty** layers — this project focuses there:
 
 - Every answer cites the exact source doc/section it came from.
 - When the docs don't contain the answer, it says so instead of guessing.
-- A held-out Q&A eval set measures retrieval hit-rate and answer quality.
-- Retrieved chunks are inspectable in the UI (you can see *why* it answered).
+- A held-out Q&A eval set measures retrieval hit-rate and no-answer accuracy.
+- Retrieved chunks are inspectable (you can see *why* it answered).
+
+The current corpus is the **public [n8n](https://n8n.io) documentation** — used
+only as a realistic, structured docs set for a portfolio demo. The pipeline is
+domain-agnostic: swapping the corpus is a matter of pointing the ingester at a
+different set of Markdown docs.
 
 ## Stack
 
 | Layer | Choice |
 |-------|--------|
-| Ingestion | Python (sitemap-driven crawl of help.shopify.com) |
-| Embeddings + vector store | pgvector (Postgres) |
-| LLM | Claude API |
-| Backend | FastAPI |
-| Frontend | React (chat UI + source/trace panel) |
-| Eval | Python eval harness (retrieval hit@k + answer grading) |
-| Deploy | Docker → (Fly.io / Render) |
+| Ingestion | Python — header-based chunking of Markdown docs (frontmatter → citation URL) |
+| Embeddings | `fastembed` · `BAAI/bge-small-en-v1.5` (384-dim, local, no API key) |
+| Vector store | pgvector (Postgres) · HNSW cosine index |
+| LLM | Groq · `llama-3.3-70b-versatile` (OpenAI-compatible API) |
+| Backend | FastAPI *(in progress)* |
+| Frontend | React — chat UI + source/trace panel *(in progress)* |
+| Eval | Python harness — retrieval hit@k + no-answer accuracy *(in progress)* |
+| Deploy | Docker → Fly.io / Render *(planned)* |
+
+## Pipeline
+
+```
+docs (.md) → [1] ingest → [2] chunk → [3] embed → [4] pgvector
+                                                       │
+question ──────────────────────► [5] semantic search ─┘
+                                        │
+                                 [6] grounded answer + citations
+                                     (or "I don't know")
+```
+
+The basic loop ([1]–[6]) works end-to-end locally. The differentiation layer
+(numbers, retrieval traces, UI, deploy) is what the rest of the roadmap builds.
 
 ## Status
 
-🚧 In progress — see `PLAN.md` for scope, weekly plan, and current step.
+🚧 In progress — see `PLAN.md` for scope and the current step.
+Basic RAG loop (ingest → answer with citations + no-answer handling) is done;
+eval harness, inspectable traces, UI, and deployment are next.
 
 ## Data source note
 
-Uses the **public** Shopify Help Center (`help.shopify.com`) for a portfolio
-demo only. Crawling respects `robots.txt` and a 1s crawl delay; content is not
+Uses the **public** n8n documentation for a portfolio demo only. Content is not
 redistributed commercially.
