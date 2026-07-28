@@ -59,8 +59,8 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · **Groq `llama-3.3-70b`(무�
 - [x] **에러분석 → 리랭커 → 재측정 완성** (`5d124bc`, 2026-07-28). 진단(`eval/diagnose.py`): 실패 3건 다 **ranking 문제**(정답 청크가 top-8엔 있으나 표면 단어충돌에 밀림, import↔export 임베딩 혼동 등). 해결=**cross-encoder 리랭커**(`ms-marco-MiniLM-L-6-v2`, top-20 후보 재채점), `RAG_RERANK` env 토글. **Before→After: Recall@1 69.2→76.9·@3 94.9→97.4·@5 94.9→100·MRR .816→.861·오거부 5.1→2.6·검색실패 2→0.** 아티팩트 `eval/results_baseline.json`·`results_reranked.json`, README에 before/after 표+한계 기록.
   - ⚠️남긴 실패 q28(고의): "add a new customer" vs 문서 "create a customer"=어휘갭. 정답문서 top-5엔 오나 create섹션 청크 미검색→**환각 대신 정직한 거부**(안전한 실패). 오버피팅 안 하고 한계로 문서화. 다음후보=쿼리확장/청크수준 스코어링.
   - ⚠️Groq 무료 **일일 10만 토큰(TPD)** 한도: eval 풀런(LLM 46콜)이 ~11만 토큰이라 하루 1~2회가 한계. 검색지표는 `EVAL_SKIP_LLM=1`로 무료 재생성. 정직성 수치는 트랜스크립트/README에 기록됨(내일 리셋 후 full JSON 재생성 가능).
-- [ ] **M2. 얇은 B 슬라이스**: 가짜 주문 데이터(mock JSON) + tool-calling(주문조회 함수). "내 주문 어디?" 답.
-- [ ] **M3. 정직한 라우팅**(접착제): 문서질문→인용답변 / 계정질문→주문조회 / 둘다 아니면→"모른다·상담원 연결". 이 라우팅+에스컬레이션이 시니어 신호+바이어 핵심동작.
+- [x] **M2. 얇은 B 슬라이스 + M3 라우팅 골격 완성** (`860128e`, 2026-07-28). `rag/mock_orders.json`(12건, 상태 다양) + `rag/orders.py`(lookup_order/find_orders_by_email, 결정론적 테스트 완료) + `rag/assistant.py`(LLM에 search_help_docs·lookup_order 툴 노출, tool-calling으로 라우팅, 환각 대신 에스컬레이션). **8b로 plumbing 검증**: 주문질문→lookup_order 정확답변("10432 배송중/송장/ETA"), how-to→search_help_docs 라우팅, 환각0. ⚠️**70b 최종 검증 미완**(오늘 Groq TPD 소진)=문서합성 답변품질·깔끔한 에스컬레이션 문구는 내일 리셋 후 확인. answer.py(문서전용, eval용)와 별개 파일.
+- [ ] **M3 마무리**(70b 검증 후): 라우팅 3케이스(문서 인용답변/주문조회/주문번호없음→상담원연결) 실제 품질 확인, 필요시 시스템프롬프트 튜닝. + 에스컬레이션 문구 정리.
 - 이후: 에러분석 1회+실패유형표, 검색트레이스 UI노출, before/after 케이스스터디(영어·LinkedIn), 하이브리드+리랭커 측정개선.
   - ⚠️**즉시 고칠 라벨버그**: 범위밖 질문도 `grounded=True`로 찍힘(=top_score≥0.35일뿐, 실제론 LLM이 거부). `grounded`를 "실제 답변했나"로 재정의 필요(refusal 감지). ②의 일부.
   - 데이터포인트(임계값 튜닝용): grounded질문 top≈0.79~0.84 vs 범위밖 top≈0.44~0.46 → 0.35는 너무 낮음. eval로 최적 컷 측정.
