@@ -1,4 +1,6 @@
-# PLAN — Shopify Support RAG (작업/인수인계 문서)
+# PLAN — CITE (docs RAG · Medusa corpus) — 작업/인수인계 문서
+
+> 공개 레포: https://github.com/kstarmango/docs-rag-eval (PUBLIC) · 제품명 **CITE**
 
 > 이 파일 = 프로젝트 단일 진실원. 다음 세션은 여기부터 읽고 이어간다.
 > (auto-memory `project_microsaas_ideation.md`에서 이 폴더를 가리킴)
@@ -9,7 +11,9 @@
 - 차별화 원칙: 기능 카피 = "80% 똑같은 포폴" 함정. **좁고 깊게 + "어려운 층"으로** 승부.
 
 ## 무엇을 (스코프 고정)
-Shopify 공개 헬프센터(help.shopify.com) 위에서 답하는 **지원 어시스턴트**. 딱 이 corpus 하나.
+**Medusa 상점주 user-guide**(오픈소스 e-commerce, 주문·반품·교환·상품·재고·프로모션·배송) 위에서 답하는 **지원 어시스턴트**. 딱 이 corpus 하나.
+- 왜 e-commerce: 시장조사(2026) 결론 = 가장 접근 쉬운 바이어=SMB 쇼핑몰 지원봇, 도메인이 buyer-legible해야 "so what/토이" 반응 회피. Medusa=쇼핑몰 문서 중 git-clone 깨끗+MIT.
+- 피치: "Medusa 상점문서로 만든 걸 당신 Shopify 헬프센터+주문데이터로 그대로."
 
 ## 어려운 층 (= 포폴 가치, 반드시 포함)
 1. 인용/출처 링크 — 모든 답에 근거 문서·섹션
@@ -19,7 +23,7 @@ Shopify 공개 헬프센터(help.shopify.com) 위에서 답하는 **지원 어�
 5. (여유) 청킹 전략 A/B + 근거 문서화, 피드백/에스컬레이션
 
 ## 스택
-Python / FastAPI(백엔드) · pgvector(벡터DB) · Claude API(LLM) · React(프론트) · Python eval harness · Docker→Fly.io/Render(배포·라이브 URL 필수)
+Python / FastAPI(백엔드) · pgvector(벡터DB) · **Groq `llama-3.3-70b`(무료, OpenAI호환)**(LLM) · React(프론트) · Python eval harness · Docker→Fly.io/Render(배포·라이브 URL 필수)
 - ⚠️ LangChain/LlamaIndex는 배관에만. retrieval·eval은 직접 튜닝(블랙박스 클론 금지).
 
 ## 데이터 접근 (확인 완료 2026-07-24)
@@ -41,7 +45,11 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · Claude API(LLM) · React(�
 - [x] 2026-07-27: **[6] 답변 생성 완성 (`5f15cad`) → 기본 루프(1주차) 완성.** `rag/answer.py`: 검색→번호매긴 컨텍스트→Groq(`llama-3.3-70b-versatile`, OpenAI호환)→인용[n]+출처URL. `openai 2.48.0` venv설치+requirements freeze. 실측: 정상질문 "error handling"→인용3개 정답(top 0.83), 범위밖 "프랑스 수도"→"모른다".
   - 🔑 키: 중앙 `~/.claude/secrets.env`의 `API_GROQ_KEY`. 코드=`os.getenv("API_GROQ_KEY")`. ⚠️현 셸이 키추가 前 시작이라 env 미로드 → 실행 시 secrets.env를 명령 안에서 인라인 로드(값 미출력)해 python에 주입. 재시작 불필요.
   - ⚠️**발견(차별화층 재료)**: 모름처리 2겹(유사도컷 `MIN_SCORE=0.35` + LLM 컨텍스트-only 프롬프트) 중 **점수컷은 사실상 무력** — bge-small은 무관 영어도 코사인 0.4~0.5대에 몰려 안 떨어짐. 실제 안전망=LLM 거부. → eval 하네스로 모름처리 정확도 수치화할 것. 흠: (b)도 `grounded=True`로 찍힘(=LLM에 보냄 뜻일뿐) → refusal 감지로 라벨 다듬기.
-- [ ] ★**다음 = 차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서. 반드시 엄격히. 착수점=Q&A 20~30개 테스트셋→retrieval hit@k + 모름처리 정확도 수치화.
+- [x] 2026-07-28: **GitHub 공개 정리.** 레포 `docs-rag-eval`(PUBLIC), 제품명 CITE. 웹 네이밍관행조사=포폴레포는 설명형>순수약어→"설명형 레포명+약어는 제품명" 절충. README 실제스택으로 교정.
+- [x] 2026-07-28: **★corpus 교체 n8n→Medusa (시장조사 근거).** 2각도 병렬리서치 결론: ①가장 접근쉬운 바이어=SMB e-commerce 지원봇 ②"그냥 문서챗봇"=commodity화(노코드SaaS 건당과금에 밀림)→차별화는 eval·정직성·에러분석·트레이스에서(도메인은 legibility만 삼). Medusa user-guide 72문서→**청크 605개**(평균493자). ingester를 MDX용 재작성: title=`export const metadata`에서, url=파일경로(`docs.medusajs.com/user-guide/<slug>`), MDX노이즈(import/export/JSX/`{/* */}`) 제거. 노이즈잔여 0·null 0. 재임베딩 605행 저장. 실측: "반품 생성" top 0.836 정답, 범위밖 "프랑스수도" LLM거부.
+- [ ] ★**다음 = 차별화 층**(eval 하네스 수치·정직성·트레이스). ⚠️사용자 지적: 여기까지는 튜토리얼과 동일, 차별화는 전적으로 이 층에서. 반드시 엄격히. **로드맵(임팩트순, 시장조사 근거)**: ①eval 골드셋 30~50개(고객질문→정답문서)→Recall@k **=헤드라인** ②모름처리+시연(없는질문 거부 증명) ③에러분석 1회+실패유형표 공개(가장 시니어스러운 한방) ④검색트레이스 UI노출 ⑤before/after 수치 케이스스터디(영어·LinkedIn) ⑥하이브리드(BM25+벡터)+리랭커 측정개선.
+  - ⚠️**즉시 고칠 라벨버그**: 범위밖 질문도 `grounded=True`로 찍힘(=top_score≥0.35일뿐, 실제론 LLM이 거부). `grounded`를 "실제 답변했나"로 재정의 필요(refusal 감지). ②의 일부.
+  - 데이터포인트(임계값 튜닝용): grounded질문 top≈0.79~0.84 vs 범위밖 top≈0.44~0.46 → 0.35는 너무 낮음. eval로 최적 컷 측정.
 
 ## 인프라 재현 메모 (새 세션/재부팅 후)
 - 컨테이너 꺼졌으면: `docker start shopify-rag-pg` (데이터 유지됨). 없으면 재생성(포트 5544, `CREATE EXTENSION vector`) 후 `python ingest/embed_and_store.py`(임베딩 캐시 있으면 즉시).

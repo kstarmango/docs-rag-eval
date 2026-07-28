@@ -1,8 +1,9 @@
-"""n8n 문서(.md)를 읽어 청크(chunk)로 쪼갠다.
+"""Medusa user-guide 문서(.mdx)를 읽어 청크(chunk)로 쪼갠다.
 
 각 청크 = {id, text, title, heading, source_url, source_path}
-- frontmatter(YAML)에서 공개 URL 추출 -> 인용 출처로 사용
-- 헤더(#, ##, ###) 기준 의미 단위 분할, 너무 길면 크기 기준 추가 분할(+overlap)
+- title: `export const metadata = { title: ... }` 에서 추출 (frontmatter 아님)
+- source_url: 파일 경로로 생성 (docs.medusajs.com/user-guide/<slug>)
+- MDX 노이즈(import/export/JSX/{/* */}) 제거, 헤더(#,##,###) 기준 분할, 길면 크기 분할(+overlap)
 """
 import hashlib
 import json
@@ -11,9 +12,9 @@ from pathlib import Path
 
 import yaml
 
-DOCS = Path("data/raw/n8n-docs/docs")
-INCLUDE = ["get-started", "build", "connect", "deploy",
-           "administer", "hosting", "privacy-and-security"]
+# user-guide의 Next.js app 라우트 = 상점 관리자용 how-to 문서
+DOCS = Path("data/raw/medusa/www/apps/user-guide/app")
+BASE_URL = "https://docs.medusajs.com/user-guide"
 OUT = Path("data/chunks.json")
 
 MAX_CHARS = 1400   # 청크 최대 크기
@@ -22,27 +23,60 @@ OVERLAP = 150      # 크기 분할 시 겹침(문맥 유지)
 FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 HEADER = re.compile(r"^(#{1,3})\s+(.*)$")
+# MDX 전용 노이즈
+IMPORT = re.compile(r"^import\s.*?(?:from\s*[\"'][^\"']*[\"'])?\s*$", re.MULTILINE)
+IMPORT_BLOCK = re.compile(r"^import\s*\{[^}]*\}\s*from\s*[\"'][^\"']*[\"']", re.MULTILINE | re.DOTALL)
+EXPORT_META = re.compile(r"^export\s+const\s+metadata\s*=\s*\{.*?\}\s*$", re.MULTILINE | re.DOTALL)
+MDX_COMMENT = re.compile(r"\{/\*.*?\*/\}", re.DOTALL)
+JSX_TAG = re.compile(r"</?[A-Za-z][^>]*/?>")   # <Note>, <EllipsisHorizontal />, </Table> 등
+TITLE_IN_META = re.compile(r"title:\s*[`\"']([^`\"']+)[`\"']")
+MDX_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\.mdx[^)]*\)")   # [text](../x/page.mdx) -> text
 
 
-def parse_file(path: Path):
+def path_to_url(rel: str) -> str:
+    slug = rel[:-len("/page.mdx")] if rel.endswith("/page.mdx") else rel
+    slug = slug.strip("/")
+    return f"{BASE_URL}/{slug}" if slug else BASE_URL
+
+
+def parse_file(path: Path, rel: str):
     raw = path.read_text(encoding="utf-8", errors="ignore")
-    meta, body = {}, raw
+
     m = FRONTMATTER.match(raw)
+    fm = {}
+    body = raw
     if m:
         try:
-            meta = yaml.safe_load(m.group(1)) or {}
+            fm = yaml.safe_load(m.group(1)) or {}
         except Exception:
-            meta = {}
+            fm = {}
         body = raw[m.end():]
+
+    # title: metadata -> frontmatter sidebar_label -> 첫 # 헤더 -> 경로
+    title = None
+    tm = TITLE_IN_META.search(body)
+    if tm:
+        title = tm.group(1).strip()
+    if not title:
+        title = fm.get("sidebar_label")
+
+    # MDX 노이즈 제거
+    body = EXPORT_META.sub("", body)
+    body = IMPORT_BLOCK.sub("", body)
+    body = IMPORT.sub("", body)
+    body = MDX_COMMENT.sub("", body)
     body = IMAGE.sub("", body)
     body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+    body = MDX_LINK.sub(r"\1", body)
+    body = JSX_TAG.sub("", body)
+    # `# {metadata.title}` 같은 JSX 표현식 헤더를 실제 제목으로
+    body = body.replace("{metadata.title}", title or "")
 
-    url = meta.get("url")
-    title = meta.get("title") or meta.get("nodeTitle")
     if not title:
         h = re.search(r"^#\s+(.*)$", body, re.MULTILINE)
-        title = h.group(1).strip() if h else path.stem
-    return title, url, body
+        title = h.group(1).strip() if h else path.parent.name
+
+    return title, path_to_url(rel), body
 
 
 def split_by_headers(body: str):
@@ -53,7 +87,7 @@ def split_by_headers(body: str):
         if hm:
             if lines:
                 sections.append((head, "\n".join(lines).strip()))
-            head = re.sub(r"<[^>]+>", "", hm.group(2)).strip()  # HTML 앵커 제거
+            head = re.sub(r"<[^>]+>", "", hm.group(2)).strip()
             lines = []
         else:
             lines.append(line)
@@ -74,19 +108,20 @@ def cap_size(text: str):
 
 
 def main():
-    files = []
-    for d in INCLUDE:
-        files += sorted((DOCS / d).rglob("*.md"))
-    print(f"[1] 대상 문서 {len(files)}개 ({', '.join(INCLUDE)})")
+    files = sorted(DOCS.rglob("page.mdx"))
+    # Next.js 동적 라우트/렌더러(실 문서 아님) 제외
+    files = [f for f in files if "md-content" not in f.parts and "[[" not in str(f)]
+    print(f"[1] 대상 문서 {len(files)}개 (Medusa user-guide)")
 
     chunks = []
     for path in files:
-        title, url, body = parse_file(path)
         rel = str(path.relative_to(DOCS)).replace("\\", "/")
+        title, url, body = parse_file(path, rel)
         for heading, text in split_by_headers(body):
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()   # MDX 제거로 생긴 빈줄 정리
             for piece in cap_size(text):
                 piece = piece.strip()
-                if len(piece) < 30:      # 너무 짧은 조각(제목만 등) 버림
+                if len(piece) < 30:      # 너무 짧은 조각 버림
                     continue
                 cid = hashlib.md5((rel + heading + piece[:60]).encode()).hexdigest()[:12]
                 chunks.append({

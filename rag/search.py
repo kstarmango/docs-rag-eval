@@ -43,7 +43,7 @@ def search(query: str, k: int = 5):
 
 
 if __name__ == "__main__":
-    q = " ".join(sys.argv[1:]) or "How do I create my first workflow?"
+    q = " ".join(sys.argv[1:]) or "How do I create a return for a customer order?"
     print(f"질문: {q}\n")
     for i, r in enumerate(search(q), 1):
         print(f"[{i}] score={r['score']:.3f}  {r['title']} > {r['heading']}")

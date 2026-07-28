@@ -18,16 +18,18 @@ the **retrieval** and **honesty** layers — this project focuses there:
 - A held-out Q&A eval set measures retrieval hit-rate and no-answer accuracy.
 - Retrieved chunks are inspectable (you can see *why* it answered).
 
-The current corpus is the **public [n8n](https://n8n.io) documentation** — used
-only as a realistic, structured docs set for a portfolio demo. The pipeline is
-domain-agnostic: swapping the corpus is a matter of pointing the ingester at a
-different set of Markdown docs.
+The current corpus is the **public [Medusa](https://medusajs.com) merchant
+user-guide** (an open-source e-commerce platform) — i.e. the kind of store-admin
+help docs a shop runs a customer-support desk over: orders, returns, exchanges,
+products, inventory, promotions, shipping. The pipeline is domain-agnostic:
+swapping the corpus is a matter of pointing the ingester at a different set of
+Markdown docs.
 
 ## Stack
 
 | Layer | Choice |
 |-------|--------|
-| Ingestion | Python — header-based chunking of Markdown docs (frontmatter → citation URL) |
+| Ingestion | Python — header-based chunking of Markdown/MDX docs (path → citation URL) |
 | Embeddings | `fastembed` · `BAAI/bge-small-en-v1.5` (384-dim, local, no API key) |
 | Vector store | pgvector (Postgres) · HNSW cosine index |
 | LLM | Groq · `llama-3.3-70b-versatile` (OpenAI-compatible API) |
@@ -58,5 +60,5 @@ eval harness, inspectable traces, UI, and deployment are next.
 
 ## Data source note
 
-Uses the **public** n8n documentation for a portfolio demo only. Content is not
-redistributed commercially.
+Uses the **public** Medusa documentation (MIT-licensed) for a portfolio demo
+only. Content is not redistributed commercially.
