@@ -1,0 +1,125 @@
+[
+  {
+    "order_id": "10432",
+    "customer_email": "jane.doe@example.com",
+    "customer_name": "Jane Doe",
+    "status": "shipped",
+    "placed_at": "2026-07-20",
+    "items": [{"name": "Trailblazer Running Shoes", "variant": "US 9 / Blue", "qty": 1}],
+    "total": "$89.00",
+    "shipping": {"carrier": "UPS", "tracking_number": "1Z999AA10123456784", "estimated_delivery": "2026-07-29", "address": "123 Market St, San Francisco, CA 94103"}
+  },
+  {
+    "order_id": "10433",
+    "customer_email": "sam.lee@example.com",
+    "customer_name": "Sam Lee",
+    "status": "processing",
+    "placed_at": "2026-07-26",
+    "items": [{"name": "Merino Wool Beanie", "variant": "Charcoal", "qty": 2}, {"name": "Cotton Crew Socks", "variant": "M", "qty": 3}],
+    "total": "$54.50",
+    "shipping": {"carrier": null, "tracking_number": null, "estimated_delivery": null, "address": "88 Pine Ave, Seattle, WA 98101"}
+  },
+  {
+    "order_id": "10434",
+    "customer_email": "maria.garcia@example.com",
+    "customer_name": "Maria Garcia",
+    "status": "delivered",
+    "placed_at": "2026-07-10",
+    "items": [{"name": "Ceramic Pour-Over Coffee Set", "variant": "White", "qty": 1}],
+    "total": "$62.00",
+    "shipping": {"carrier": "FedEx", "tracking_number": "794658123456", "estimated_delivery": "2026-07-15", "delivered_at": "2026-07-14", "address": "12 Elm Rd, Austin, TX 78701"}
+  },
+  {
+    "order_id": "10435",
+    "customer_email": "jane.doe@example.com",
+    "customer_name": "Jane Doe",
+    "status": "delivered",
+    "placed_at": "2026-06-28",
+    "items": [{"name": "Insulated Water Bottle", "variant": "750ml / Green", "qty": 1}],
+    "total": "$28.00",
+    "shipping": {"carrier": "UPS", "tracking_number": "1Z999AA10987654321", "estimated_delivery": "2026-07-03", "delivered_at": "2026-07-02", "address": "123 Market St, San Francisco, CA 94103"}
+  },
+  {
+    "order_id": "10436",
+    "customer_email": "chen.wei@example.com",
+    "customer_name": "Chen Wei",
+    "status": "cancelled",
+    "placed_at": "2026-07-22",
+    "items": [{"name": "Leather Weekender Bag", "variant": "Tan", "qty": 1}],
+    "total": "$180.00",
+    "shipping": {"carrier": null, "tracking_number": null, "estimated_delivery": null, "address": "5 Kings Rd, London, UK"},
+    "note": "Cancelled by customer before fulfillment; payment voided."
+  },
+  {
+    "order_id": "10437",
+    "customer_email": "priya.nair@example.com",
+    "customer_name": "Priya Nair",
+    "status": "refunded",
+    "placed_at": "2026-07-05",
+    "items": [{"name": "Wireless Earbuds Pro", "variant": "Black", "qty": 1}],
+    "total": "$119.00",
+    "shipping": {"carrier": "DHL", "tracking_number": "JD0002000123456", "estimated_delivery": "2026-07-09", "delivered_at": "2026-07-08", "address": "220 River St, Toronto, ON"},
+    "note": "Returned as defective; full refund issued 2026-07-16."
+  },
+  {
+    "order_id": "10438",
+    "customer_email": "sam.lee@example.com",
+    "customer_name": "Sam Lee",
+    "status": "shipped",
+    "placed_at": "2026-07-24",
+    "items": [{"name": "Bamboo Cutting Board", "variant": "Large", "qty": 1}],
+    "total": "$34.00",
+    "shipping": {"carrier": "USPS", "tracking_number": "9400111899223197428490", "estimated_delivery": "2026-07-30", "address": "88 Pine Ave, Seattle, WA 98101"}
+  },
+  {
+    "order_id": "10439",
+    "customer_email": "tom.baker@example.com",
+    "customer_name": "Tom Baker",
+    "status": "pending",
+    "placed_at": "2026-07-27",
+    "items": [{"name": "Standing Desk Converter", "variant": "Walnut", "qty": 1}],
+    "total": "$220.00",
+    "shipping": {"carrier": null, "tracking_number": null, "estimated_delivery": null, "address": "17 Hill St, Denver, CO 80202"},
+    "note": "Awaiting payment confirmation."
+  },
+  {
+    "order_id": "10440",
+    "customer_email": "maria.garcia@example.com",
+    "customer_name": "Maria Garcia",
+    "status": "shipped",
+    "placed_at": "2026-07-25",
+    "items": [{"name": "Linen Throw Blanket", "variant": "Sand", "qty": 1}, {"name": "Scented Soy Candle", "variant": "Cedar", "qty": 2}],
+    "total": "$76.00",
+    "shipping": {"carrier": "FedEx", "tracking_number": "794658987654", "estimated_delivery": "2026-07-31", "address": "12 Elm Rd, Austin, TX 78701"}
+  },
+  {
+    "order_id": "10441",
+    "customer_email": "omar.hassan@example.com",
+    "customer_name": "Omar Hassan",
+    "status": "delivered",
+    "placed_at": "2026-07-12",
+    "items": [{"name": "Mechanical Keyboard", "variant": "Brown switches", "qty": 1}],
+    "total": "$110.00",
+    "shipping": {"carrier": "UPS", "tracking_number": "1Z999AA10555666777", "estimated_delivery": "2026-07-17", "delivered_at": "2026-07-17", "address": "9 Bay St, Boston, MA 02116"}
+  },
+  {
+    "order_id": "10442",
+    "customer_email": "lucia.rossi@example.com",
+    "customer_name": "Lucia Rossi",
+    "status": "processing",
+    "placed_at": "2026-07-27",
+    "items": [{"name": "Yoga Mat", "variant": "6mm / Teal", "qty": 1}, {"name": "Cork Yoga Block", "variant": "Standard", "qty": 2}],
+    "total": "$58.00",
+    "shipping": {"carrier": null, "tracking_number": null, "estimated_delivery": null, "address": "3 Via Roma, Milan, IT"}
+  },
+  {
+    "order_id": "10443",
+    "customer_email": "tom.baker@example.com",
+    "customer_name": "Tom Baker",
+    "status": "shipped",
+    "placed_at": "2026-07-23",
+    "items": [{"name": "Cast Iron Skillet", "variant": "12 inch", "qty": 1}],
+    "total": "$45.00",
+    "shipping": {"carrier": "USPS", "tracking_number": "9400111899223197001122", "estimated_delivery": "2026-07-29", "address": "17 Hill St, Denver, CO 80202"}
+  }
+]
