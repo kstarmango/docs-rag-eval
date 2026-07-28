@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CITE — grounded, evaluated RAG assistant</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --muted:#9aa3b2; --accent:#5b8cff; --good:#3fb950; --warn:#e3b341;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;
+       background:var(--bg);color:var(--text)}
+  header{padding:22px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:19px;letter-spacing:.2px}
+  h1 b{color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  main{max-width:920px;margin:0 auto;padding:24px}
+  .askbar{display:flex;gap:8px;margin-bottom:8px}
+  input[type=text]{flex:1;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+       background:var(--panel2);color:var(--text);font-size:15px}
+  input[type=text]:focus{outline:none;border-color:var(--accent)}
+  button{padding:12px 16px;border-radius:10px;border:1px solid var(--line);
+       background:var(--panel2);color:var(--text);cursor:pointer;font-size:14px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button:hover{filter:brightness(1.12)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+  .chip{font-size:12.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);
+       padding:5px 10px;border-radius:999px;cursor:pointer}
+  .chip:hover{color:var(--text);border-color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .answer{white-space:pre-wrap;font-size:15px}
+  .answer .cite{color:var(--accent);font-weight:600}
+  .badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;background:var(--panel2);
+       border:1px solid var(--line);color:var(--muted);margin-right:6px}
+  .trace-item{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:9px;background:var(--panel2)}
+  .trace-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .rk{font-weight:700;color:var(--accent);min-width:22px}
+  .scores{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .scores b{color:var(--good)}
+  .loc{font-size:13.5px}
+  .loc a{color:var(--text);text-decoration:none;border-bottom:1px dotted var(--muted)}
+  .loc .h{color:var(--muted)}
+  .snip{font-size:12.5px;color:var(--muted);margin-top:5px;max-height:52px;overflow:hidden}
+  .note{font-size:12.5px;color:var(--warn)}
+  .empty{color:var(--muted);text-align:center;padding:30px}
+  footer{color:var(--muted);font-size:12px;text-align:center;padding:20px}
+  a.repo{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1><b>CITE</b> — grounded, evaluated RAG assistant</h1>
+  <div class="sub">Support assistant over the Medusa store docs. Answers cite their source, refuse when unknown,
+    look up orders, and every retrieval is inspectable.</div>
+</header>
+<main>
+  <div class="askbar">
+    <input id="q" type="text" placeholder="Ask a question, or inspect what the retriever finds…"
+           autocomplete="off">
+    <button class="primary" id="askBtn">Ask</button>
+    <button id="traceBtn">Trace</button>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div id="answerCard" class="card" style="display:none">
+    <h3>Answer</h3>
+    <div class="answer" id="answer"></div>
+    <div id="tools" style="margin-top:10px"></div>
+  </div>
+
+  <div id="traceCard" class="card" style="display:none">
+    <h3>Retrieval trace <span id="traceMeta" class="badge"></span></h3>
+    <div id="trace"></div>
+  </div>
+
+  <div id="hello" class="empty">Type a question and hit <b>Trace</b> to see which document chunks the
+    retriever pulls (with vector &amp; reranker scores), or <b>Ask</b> for a cited answer.</div>
+</main>
+<footer>
+  Demo · retrieval + reranker run locally (no LLM needed) · answers via Groq ·
+  <a class="repo" href="https://github.com/kstarmango/docs-rag-eval" target="_blank">source on GitHub</a>
+</footer>
+
+<script>
+const EXAMPLES = [
+  "How do I create a return for a customer order?",
+  "How do I set up a 20% off discount code?",
+  "How do I bulk import products from a spreadsheet?",
+  "Where is my order #10432?",
+  "What is the capital of France?",
+];
+const q = document.getElementById('q');
+const chips = document.getElementById('chips');
+EXAMPLES.forEach(e=>{
+  const c=document.createElement('span'); c.className='chip'; c.textContent=e;
+  c.onclick=()=>{q.value=e; trace();}; chips.appendChild(c);
+});
+
+function esc(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+function short(u){return (u||'').replace('https://docs.medusajs.com/user-guide/','…/');}
+
+async function trace(){
+  const query=q.value.trim(); if(!query) return;
+  document.getElementById('hello').style.display='none';
+  const card=document.getElementById('traceCard'), box=document.getElementById('trace');
+  card.style.display='block'; box.innerHTML='<div class="empty">searching…</div>';
+  try{
+    const r=await fetch('/api/search?q='+encodeURIComponent(query)+'&k=5');
+    const d=await r.json();
+    document.getElementById('traceMeta').textContent = d.reranked ? 'bi-encoder + reranker' : 'bi-encoder only';
+    box.innerHTML = d.results.map(x=>`
+      <div class="trace-item">
+        <div class="trace-top">
+          <span class="rk">${x.rank}</span>
+          <span class="loc"><a href="${x.source_url}" target="_blank">${esc(x.title)}</a>
+            <span class="h">› ${esc(x.heading)}</span></span>
+          <span class="scores">vector ${x.score}${x.rerank_score!==null?` · <b>rerank ${x.rerank_score}</b>`:''}</span>
+        </div>
+        <div class="snip">${esc(x.text.slice(0,220))}…</div>
+      </div>`).join('');
+  }catch(e){ box.innerHTML='<div class="note">error: '+esc(''+e)+'</div>'; }
+}
+
+async function ask(){
+  const query=q.value.trim(); if(!query) return;
+  document.getElementById('hello').style.display='none';
+  trace();  // 항상 트레이스도 같이 보여줌(왜 그렇게 답했나)
+  const card=document.getElementById('answerCard'), box=document.getElementById('answer');
+  const tools=document.getElementById('tools');
+  card.style.display='block'; box.textContent='thinking…'; tools.innerHTML='';
+  try{
+    const r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:query})});
+    const d=await r.json();
+    if(d.error){ box.innerHTML='<span class="note">'+esc(d.error)+'</span>';
+      if(d.hint) tools.innerHTML='<div class="note">'+esc(d.hint)+'</div>'; return; }
+    box.innerHTML = esc(d.answer||'').replace(/\[(\d+)\]/g,'<span class="cite">[$1]</span>');
+    const used=(d.tools_used||[]).map(t=>t.tool);
+    if(used.length) tools.innerHTML='<span class="badge">tools: '+esc(used.join(', '))+'</span>';
+  }catch(e){ box.innerHTML='<span class="note">error: '+esc(''+e)+'</span>'; }
+}
+
+document.getElementById('askBtn').onclick=ask;
+document.getElementById('traceBtn').onclick=trace;
+q.addEventListener('keydown',e=>{if(e.key==='Enter')trace();});
+</script>
+</body>
+</html>
