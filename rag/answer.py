@@ -24,12 +24,14 @@ LLM_API_KEY = os.getenv("API_GROQ_KEY")
 TOP_K = 5           # LLM에 넘길 청크 수
 MIN_SCORE = 0.35    # 최상위 청크 유사도가 이 밑이면 "관련 문서 없음"으로 간주
 
-SYSTEM_PROMPT = """You are a support assistant for n8n (a workflow automation tool).
-Answer ONLY using the numbered context passages provided by the user.
+REFUSAL = "I don't have information about that in the documentation."
+
+SYSTEM_PROMPT = f"""You are a support assistant for a store running on Medusa (an e-commerce platform).
+You help store operators use the Medusa Admin. Answer ONLY using the numbered context passages provided by the user.
 
 Rules:
 - Base every claim on the passages. Cite them inline with [n] markers matching the passage numbers.
-- If the passages do not contain the answer, reply exactly: "I don't have information about that in the documentation."
+- If the passages do not contain the answer, reply exactly: "{REFUSAL}"
 - Do not use outside knowledge. Do not guess. Be concise and practical.
 """
 
@@ -61,10 +63,12 @@ def answer(question: str, k: int = TOP_K):
     top = hits[0]["score"] if hits else 0.0
     if not hits or top < MIN_SCORE:
         return {
-            "answer": "I don't have information about that in the documentation.",
+            "answer": REFUSAL,
             "sources": [],
             "hits": hits,
-            "grounded": False,
+            "grounded": False,      # 검색 임계값 통과 여부
+            "answered": False,      # 실제로 답했는지 (거부 아님)
+            "status": "refused_low_score",
             "top_score": top,
         }
 
@@ -81,6 +85,10 @@ def answer(question: str, k: int = TOP_K):
     )
     text = resp.choices[0].message.content.strip()
 
+    # 검색은 통과했지만 LLM이 컨텍스트에 답이 없다고 판단해 거부한 경우 구분.
+    # (grounded=검색통과 ≠ answered=실제답변. 아까 라벨버그 원인)
+    refused = text.rstrip(".").strip() == REFUSAL.rstrip(".").strip()
+
     # 출처: 검색된 청크의 URL을 번호와 함께 (LLM이 인용한 [n]과 매칭)
     sources = [
         {"n": i, "url": h.get("source_url"), "title": h.get("title"),
@@ -92,16 +100,19 @@ def answer(question: str, k: int = TOP_K):
         "sources": sources,
         "hits": hits,
         "grounded": True,
+        "answered": not refused,
+        "status": "refused_by_llm" if refused else "answered",
         "top_score": top,
     }
 
 
 if __name__ == "__main__":
-    q = " ".join(sys.argv[1:]) or "How do I set up error handling in a workflow?"
+    q = " ".join(sys.argv[1:]) or "How do I create a return for a customer order?"
     print(f"질문: {q}\n")
     result = answer(q)
     print(result["answer"])
-    print(f"\n--- grounded={result['grounded']} (top_score={result['top_score']:.3f}) ---")
+    print(f"\n--- status={result['status']} grounded={result['grounded']} "
+          f"answered={result['answered']} (top_score={result['top_score']:.3f}) ---")
     for s in result["sources"]:
         if s["url"]:
             print(f"[{s['n']}] {s['url']}  (score {s['score']:.2f})")
