@@ -10,16 +10,18 @@
 결과 스코어카드 출력 + eval/results.json 저장(케이스스터디용).
 """
 import json
+import os
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from rag.search import search    # noqa: E402
+from rag.search import search, RERANK_DEFAULT    # noqa: E402
 from rag.answer import answer    # noqa: E402
 
+MODE = "reranked" if RERANK_DEFAULT else "baseline"
 GOLD = Path("eval/gold_set.json")
-OUT = Path("eval/results.json")
+OUT = Path(f"eval/results_{MODE}.json")   # RAG_RERANK=0 이면 baseline, 아니면 reranked
 KS = (1, 3, 5)
 TOP_K = 5
 
@@ -85,10 +87,27 @@ def main():
     questions = data["questions"]
     in_scope = [q for q in questions if q["correct_doc"] is not None]
     out_scope = [q for q in questions if q["correct_doc"] is None]
-    print(f"골드셋: 정상 {len(in_scope)} + 범위밖 {len(out_scope)} = {len(questions)}\n")
+    print(f"골드셋: 정상 {len(in_scope)} + 범위밖 {len(out_scope)} = {len(questions)}  [모드: {MODE}]\n")
 
     print("[1] 검색 품질 (retrieval) 측정 중...")
     recall, mrr, ret_rows = retrieval_eval(in_scope)
+
+    # 정직성 eval은 LLM 호출(유료/rate-limit) → EVAL_SKIP_LLM=1 이면 검색 지표만.
+    if os.getenv("EVAL_SKIP_LLM") == "1":
+        print("[2] 정직성 eval 건너뜀 (EVAL_SKIP_LLM=1, 검색 지표만)")
+        print("\n검색 품질 [{}]".format(MODE))
+        for k in KS:
+            print(f"    Recall@{k}: {recall[k]*100:5.1f}%   ({round(recall[k]*len(in_scope))}/{len(in_scope)})")
+        print(f"    MRR      : {mrr:.3f}")
+        ret_fail = [r for r in ret_rows if r["rank"] is None]
+        if ret_fail:
+            print(f"검색 실패 {len(ret_fail)}건: " + ", ".join(r["id"] for r in ret_fail))
+        OUT.write_text(json.dumps({
+            "mode": MODE, "recall": recall, "mrr": mrr,
+            "honesty": None, "retrieval_rows": ret_rows,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\n결과 저장: {OUT}")
+        return
 
     print("[2] 정직성 (no-answer) 측정 중... (LLM 호출, 조금 걸림)")
     hon_rows = honesty_eval(questions)

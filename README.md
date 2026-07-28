@@ -52,6 +52,48 @@ question ──────────────────────► [
 The basic loop ([1]–[6]) works end-to-end locally. The differentiation layer
 (numbers, retrieval traces, UI, deploy) is what the rest of the roadmap builds.
 
+## Evaluation
+
+Retrieval and honesty are measured, not asserted. The gold set (`eval/gold_set.json`)
+is 46 questions written the way a store operator actually asks them: **39 in-scope**
+(each labeled with the doc that answers it) and **7 out-of-scope** (the assistant
+should refuse). `eval/run_eval.py` reports two things:
+
+- **Retrieval** — does the correct doc appear in the top-k? (Recall@k, MRR). No LLM
+  needed, so this number is free and deterministic.
+- **Honesty** — are out-of-scope questions refused (not answered), and are real
+  questions wrongly refused (over-refusal)?
+
+### Before → after: adding a cross-encoder reranker
+
+Error analysis on the first run showed the failures were a *ranking* problem, not a
+recall problem: the bi-encoder (bge-small) retrieved the right neighborhood but was
+fooled by surface word collisions (e.g. a "bulk import" query pulled the *Bulk Editor*
+and *Export* docs above *Import Products*). The fix: retrieve the top-20 candidates by
+vector, then re-score them with a cross-encoder (`ms-marco-MiniLM-L-6-v2`) that reads
+the query and each chunk *together*.
+
+| Metric | Bi-encoder only | + Cross-encoder reranker |
+|---|---|---|
+| Recall@1 | 69.2% | **76.9%** |
+| Recall@3 | 94.9% | **97.4%** |
+| Recall@5 | 94.9% | **100.0%** |
+| MRR | 0.816 | **0.861** |
+| Retrieval failures (correct doc not in top-5) | 2 | **0** |
+| Out-of-scope refusal accuracy | 100% (7/7) | 100% (7/7) |
+| Over-refusal (real questions refused) | 5.1% | **2.6%** |
+
+The reranker eliminated both retrieval failures. **One question still fails, on
+purpose kept in the report**: "how do I *add* a new customer" — the docs say
+"*create* a customer", an add/create vocabulary gap. The correct doc reaches the
+top-5 but the *create-customer* section isn't the retrieved chunk, so the assistant
+**refuses instead of answering from the wrong section**. That is the safe failure;
+closing it (query expansion / chunk-level scoring) is a tracked next step, not a
+number hidden by overfitting the gold set.
+
+Reproduce: `python eval/run_eval.py` (set `RAG_RERANK=0` for the baseline column;
+`EVAL_SKIP_LLM=1` for retrieval metrics only, no LLM calls).
+
 ## Status
 
 🚧 In progress — see `PLAN.md` for scope and the current step.
