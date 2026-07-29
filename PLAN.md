@@ -65,7 +65,8 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · **Groq `llama-3.3-70b`(무�
   - **멀티턴**: `ask(question, history)`로 이전 대화 주입(`_clean_history`=user/assistant 텍스트턴만, 최근 8턴 컷). API `/api/ask`가 history 받고, 프론트=단일답변→대화 스레드(you/assistant 말풍선·New chat·Enter전송). 배관 검증(토큰0). ⚠️LLM 맥락유지 실검증은 Groq 필요.
   - **멀티코퍼스**: `chunks`에 `corpus` 컬럼 추가(`migrate_add_corpus.py`, 605행 medusa 백필). `search(q,k,corpus=)` 필터, 인제스트 corpus 태그+**해당 코퍼스만 교체**(전체 TRUNCATE 폐기), `embed_and_store.py <corpus>` 인자화. API `/api/corpora`(드롭다운용)+corpus 파라미터, 프론트 KB 셀렉터. **검증완료**(토큰0): corpus 필터·전체·빈결과·엔드포인트 다 정상.
   - **결정(2026-07-29)**: 2번째 코퍼스는 **추후 추가 예정**으로 보류(medusa 1개 유지). 이유=골드셋 없이 코퍼스만 늘리면 commodity 회귀 위험. 인프라는 완성돼 코퍼스만 붙이면 바로 살아남. UI에 "+ more coming soon" 표시.
-- [ ] **M3 마무리 + /ask 검증**(Groq 리셋 후): secrets 로드한 셸에서 서버 띄우고 라우팅 3케이스 품질 확인(문서 인용답변/주문조회/상담원연결) + **멀티턴 맥락유지** 확인. 필요시 프롬프트 튜닝.
+- [x] **README 첫인상 자산: Mermaid 아키텍처 다이어그램 + 트레이스 데모 GIF** (`baaebda`~`24c9da6`, 2026-07-29, 푸시·GitHub 렌더확인). peer 포폴 대비 유일 약점=겉포장(첫 5초). 다이어그램=이미지파일 아닌 Mermaid(안 썩음), 툴라우터→2단검색/주문/escalate+ingestion·eval 서브그래프. GIF=`docs/cite-retrieval-trace.gif`(6프레임, bulk import→**Bulk Editor가 vector 최고인데 리랭커가 강등, Import Products 승격**=우리 차별점 시각화), gif_creator 녹화(워터마크off), Groq 0. ⚠️Stack 표 부정확 발견·정정: Frontend "React"→실제 **바닐라 HTML/JS**, Backend/Frontend "(in progress)"→완료(공개레포 신뢰).
+- [ ] **M3 마무리 + /ask 검증**(Groq 리셋 후): secrets 로드한 셸에서 서버 띄우고 라우팅 3케이스 품질 확인(문서 인용답변/주문조회/상담원연결) + **멀티턴 맥락유지** 확인 + 답변/멀티턴 GIF. 필요시 프롬프트 튜닝.
 - [ ] 이후: 라이브 배포(Fly.io/Render, 라이브 URL) + 영어 케이스스터디(before/after 수치·실패→개선) + DECISIONS.md.
 - 이후: 에러분석 1회+실패유형표, 검색트레이스 UI노출, before/after 케이스스터디(영어·LinkedIn), 하이브리드+리랭커 측정개선.
   - ⚠️**즉시 고칠 라벨버그**: 범위밖 질문도 `grounded=True`로 찍힘(=top_score≥0.35일뿐, 실제론 LLM이 거부). `grounded`를 "실제 답변했나"로 재정의 필요(refusal 감지). ②의 일부.
