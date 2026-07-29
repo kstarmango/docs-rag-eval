@@ -36,8 +36,8 @@ Additional evaluated corpora are planned.
 | Embeddings | `fastembed` · `BAAI/bge-small-en-v1.5` (384-dim, local, no API key) |
 | Vector store | pgvector (Postgres) · HNSW cosine index |
 | LLM | Groq · `llama-3.3-70b-versatile` (OpenAI-compatible API) |
-| Backend | FastAPI *(in progress)* |
-| Frontend | React — chat UI + source/trace panel *(in progress)* |
+| Backend | FastAPI — `/api/ask` (agentic), `/api/search` (trace), `/api/order`, `/api/corpora` |
+| Frontend | Single-page HTML/JS — conversation UI + inspectable retrieval trace + KB selector |
 | Eval | Python harness — Recall@k, MRR, refusal accuracy (46-question gold set) |
 | Deploy | Docker → Fly.io / Render *(planned)* |
 
