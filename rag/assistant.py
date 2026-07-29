@@ -65,9 +65,9 @@ def _client():
     return OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
 
-def _run_docs(query):
+def _run_docs(query, corpus=None):
     """문서검색 → LLM에 줄 번호매긴 컨텍스트 + 출처(hits) 반환."""
-    hits = search(query, k=DOC_K)
+    hits = search(query, k=DOC_K, corpus=corpus)
     blocks = []
     for i, h in enumerate(hits, 1):
         loc = " > ".join(x for x in (h.get("title"), h.get("heading")) if x)
@@ -75,9 +75,9 @@ def _run_docs(query):
     return "\n\n".join(blocks), hits
 
 
-def _dispatch(name, args):
+def _dispatch(name, args, corpus=None):
     if name == "search_help_docs":
-        context, hits = _run_docs(args.get("query", ""))
+        context, hits = _run_docs(args.get("query", ""), corpus=corpus)
         return context or "No relevant passages found.", hits
     if name == "lookup_order":
         return json.dumps(lookup_order(args.get("order_id", "")), ensure_ascii=False), None
@@ -86,10 +86,28 @@ def _dispatch(name, args):
     return f"Unknown tool: {name}", None
 
 
-def ask(question: str):
-    """질문 → LLM 라우팅(tool-calling) → 최종 답변. dict 반환."""
+def _clean_history(history):
+    """프론트가 보낸 이전 대화에서 텍스트 턴(user/assistant)만 안전하게 추린다.
+    tool_call 배관은 다시 안 넘김 — 이전 최종답변 텍스트만 맥락으로 충분."""
+    out = []
+    for m in history or []:
+        role = (m.get("role") or "").strip()
+        content = (m.get("content") or "").strip()
+        if role in ("user", "assistant") and content:
+            out.append({"role": role, "content": content})
+    return out[-8:]   # 최근 8턴만 (토큰·프롬프트 폭주 방지)
+
+
+def ask(question: str, history=None, corpus=None):
+    """질문(+이전 대화) → LLM 라우팅(tool-calling) → 최종 답변. dict 반환.
+
+    history: [{"role": "user"|"assistant", "content": str}, ...] 이전 턴들.
+    corpus: 문서검색을 특정 코퍼스로 한정(None=전체).
+    후속질문("그 주문 취소는?", "그럼 20%는?")이 맥락을 이어가게 한다.
+    """
     client = _client()
     messages = [{"role": "system", "content": SYSTEM_PROMPT},
+                *_clean_history(history),
                 {"role": "user", "content": question}]
     tools_used, doc_sources = [], []
 
@@ -109,7 +127,7 @@ def ask(question: str):
             except json.JSONDecodeError:
                 args = {}
             tools_used.append({"tool": name, "args": args})
-            content, hits = _dispatch(name, args)
+            content, hits = _dispatch(name, args, corpus=corpus)
             if hits:
                 for i, h in enumerate(hits, 1):
                     doc_sources.append({"n": i, "url": h.get("source_url"),

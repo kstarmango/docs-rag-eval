@@ -21,9 +21,12 @@ the **retrieval** and **honesty** layers — this project focuses there:
 The current corpus is the **public [Medusa](https://medusajs.com) merchant
 user-guide** (an open-source e-commerce platform) — i.e. the kind of store-admin
 help docs a shop runs a customer-support desk over: orders, returns, exchanges,
-products, inventory, promotions, shipping. The pipeline is domain-agnostic:
-swapping the corpus is a matter of pointing the ingester at a different set of
-Markdown docs.
+products, inventory, promotions, shipping. The pipeline is domain-agnostic and
+**multi-corpus**: each ingested doc set is tagged with a `corpus` id, search can
+be scoped to one, and the UI exposes a knowledge-base selector. One corpus
+(Medusa) is loaded today; adding another is just pointing the ingester at a
+different set of Markdown docs (`python ingest/embed_and_store.py <corpus>`).
+Additional evaluated corpora are planned.
 
 ## Stack
 
@@ -97,8 +100,11 @@ Reproduce: `python eval/run_eval.py` (set `RAG_RERANK=0` for the baseline column
 ## Status
 
 🚧 In progress — see `PLAN.md` for scope and the current step.
-Basic RAG loop (ingest → answer with citations + no-answer handling) is done;
-eval harness, inspectable traces, UI, and deployment are next.
+Done: RAG loop (ingest → cited answers + no-answer handling), eval harness with
+before/after numbers, cross-encoder reranker, order-lookup tool with agentic
+routing, and a demo web UI with inspectable retrieval traces, multi-turn
+conversation, and a multi-corpus knowledge-base selector.
+Next: a second evaluated corpus and live deployment.
 
 ## Data source note
 

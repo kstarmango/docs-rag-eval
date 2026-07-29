@@ -43,26 +43,29 @@ def _rerank(query, rows, k):
     return rows[:k]
 
 
-def search(query: str, k: int = 5, rerank: bool = None):
+def search(query: str, k: int = 5, rerank: bool = None, corpus: str = None):
+    """corpus=None이면 전체 코퍼스 검색(하위호환), 주어지면 그 코퍼스로 한정."""
     rerank = RERANK_DEFAULT if rerank is None else rerank
     n = max(k, CANDIDATES) if rerank else k   # 리랭크 시 후보를 넉넉히 뽑는다
     vec = _embed(query)
+    where = "WHERE corpus = %s " if corpus else ""
+    params = ([vec, corpus, vec, n] if corpus else [vec, vec, n])
     conn = connect()
     with conn.cursor() as cur:
         # <=> = 코사인 거리. score = 1 - 거리 = 코사인 유사도(높을수록 가까움)
         cur.execute(
-            "SELECT id, text, title, heading, source_url, "
+            "SELECT id, text, title, heading, source_url, corpus, "
             "       1 - (embedding <=> %s) AS score "
-            "FROM chunks "
+            "FROM chunks " + where +
             "ORDER BY embedding <=> %s "
             "LIMIT %s",
-            (vec, vec, n),
+            params,
         )
         rows = cur.fetchall()
     conn.close()
     hits = [
         {"id": r[0], "text": r[1], "title": r[2], "heading": r[3],
-         "source_url": r[4], "score": float(r[5])}
+         "source_url": r[4], "corpus": r[5], "score": float(r[6])}
         for r in rows
     ]
     if rerank and hits:

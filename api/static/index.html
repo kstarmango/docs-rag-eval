@@ -31,8 +31,12 @@
   .chip:hover{color:var(--text);border-color:var(--accent)}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
   .card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
-  .answer{white-space:pre-wrap;font-size:15px}
-  .answer .cite{color:var(--accent);font-weight:600}
+  .turn{margin-bottom:14px}
+  .turn .who{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px}
+  .turn.user .bubble{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;display:inline-block}
+  .turn.bot .bubble{white-space:pre-wrap;font-size:15px}
+  .turn.bot .cite{color:var(--accent);font-weight:600}
+  .turn .badge{margin-top:8px}
   .badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;background:var(--panel2);
        border:1px solid var(--line);color:var(--muted);margin-right:6px}
   .trace-item{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:9px;background:var(--panel2)}
@@ -63,12 +67,19 @@
     <button class="primary" id="askBtn">Ask</button>
     <button id="traceBtn">Trace</button>
   </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <span style="font-size:12.5px;color:var(--muted)">Knowledge base</span>
+    <select id="corpus" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);
+        background:var(--panel2);color:var(--text);font-size:13px"></select>
+  </div>
   <div class="chips" id="chips"></div>
 
   <div id="answerCard" class="card" style="display:none">
-    <h3>Answer</h3>
-    <div class="answer" id="answer"></div>
-    <div id="tools" style="margin-top:10px"></div>
+    <div style="display:flex;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0">Conversation</h3>
+      <button id="newChat" style="margin-left:auto;padding:5px 10px;font-size:12px">New chat</button>
+    </div>
+    <div id="thread"></div>
   </div>
 
   <div id="traceCard" class="card" style="display:none">
@@ -99,6 +110,21 @@ EXAMPLES.forEach(e=>{
   c.onclick=()=>{q.value=e; trace();}; chips.appendChild(c);
 });
 
+const corpusSel = document.getElementById('corpus');
+function currentCorpus(){ return corpusSel.value || ''; }
+async function loadCorpora(){
+  try{
+    const d = await (await fetch('/api/corpora')).json();
+    const opts = (d.corpora||[]);
+    // 코퍼스가 여럿이면 "전체" + 각각. 하나뿐이면 그 하나만(전체 옵션은 중복이라 생략).
+    const head = opts.length>1 ? '<option value="">All knowledge bases</option>' : '';
+    corpusSel.innerHTML = head +
+      opts.map(c=>`<option value="${esc(c.id)}">${esc(c.label)} (${c.chunks})</option>`).join('') +
+      '<option value="" disabled>+ more coming soon</option>';
+    if(opts.length===1) corpusSel.value = opts[0].id;
+  }catch(e){ corpusSel.innerHTML='<option value="">All</option>'; }
+}
+
 function esc(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
 function short(u){return (u||'').replace('https://docs.medusajs.com/user-guide/','…/');}
 
@@ -108,7 +134,8 @@ async function trace(){
   const card=document.getElementById('traceCard'), box=document.getElementById('trace');
   card.style.display='block'; box.innerHTML='<div class="empty">searching…</div>';
   try{
-    const r=await fetch('/api/search?q='+encodeURIComponent(query)+'&k=5');
+    const r=await fetch('/api/search?q='+encodeURIComponent(query)+'&k=5'
+        +'&corpus='+encodeURIComponent(currentCorpus()));
     const d=await r.json();
     document.getElementById('traceMeta').textContent = d.reranked ? 'bi-encoder + reranker' : 'bi-encoder only';
     box.innerHTML = d.results.map(x=>`
@@ -124,28 +151,51 @@ async function trace(){
   }catch(e){ box.innerHTML='<div class="note">error: '+esc(''+e)+'</div>'; }
 }
 
+let convo = [];  // {role:'user'|'assistant', content, badge?} 누적 = 멀티턴 히스토리
+
+function fmtBot(text){
+  return esc(text||'').replace(/\[(\d+)\]/g,'<span class="cite">[$1]</span>');
+}
+function renderThread(pending){
+  const thread=document.getElementById('thread');
+  let html = convo.map(t=> t.role==='user'
+    ? `<div class="turn user"><div class="who">you</div><div class="bubble">${esc(t.content)}</div></div>`
+    : `<div class="turn bot"><div class="who">assistant</div><div class="bubble">${fmtBot(t.content)}</div>`
+      + `${t.badge?`<div class="badge">${esc(t.badge)}</div>`:''}</div>`
+  ).join('');
+  if(pending) html += `<div class="turn bot"><div class="who">assistant</div><div class="bubble">thinking…</div></div>`;
+  thread.innerHTML = html;
+}
+
 async function ask(){
   const query=q.value.trim(); if(!query) return;
   document.getElementById('hello').style.display='none';
-  trace();  // 항상 트레이스도 같이 보여줌(왜 그렇게 답했나)
-  const card=document.getElementById('answerCard'), box=document.getElementById('answer');
-  const tools=document.getElementById('tools');
-  card.style.display='block'; box.textContent='thinking…'; tools.innerHTML='';
+  document.getElementById('answerCard').style.display='block';
+  trace();                        // 항상 트레이스도 같이(왜 그렇게 답했나)
+  const history = convo.map(t=>({role:t.role, content:t.content}));  // 이번 질문 이전 대화
+  convo.push({role:'user', content:query});
+  renderThread(true); q.value='';
   try{
     const r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({question:query})});
+      body:JSON.stringify({question:query, history, corpus:currentCorpus()})});
     const d=await r.json();
-    if(d.error){ box.innerHTML='<span class="note">'+esc(d.error)+'</span>';
-      if(d.hint) tools.innerHTML='<div class="note">'+esc(d.hint)+'</div>'; return; }
-    box.innerHTML = esc(d.answer||'').replace(/\[(\d+)\]/g,'<span class="cite">[$1]</span>');
+    if(d.error){ convo.push({role:'assistant', content:d.error+(d.hint?'\n\n'+d.hint:'')}); renderThread(false); return; }
     const used=(d.tools_used||[]).map(t=>t.tool);
-    if(used.length) tools.innerHTML='<span class="badge">tools: '+esc(used.join(', '))+'</span>';
-  }catch(e){ box.innerHTML='<span class="note">error: '+esc(''+e)+'</span>'; }
+    convo.push({role:'assistant', content:d.answer||'', badge: used.length?('tools: '+used.join(', ')):''});
+    renderThread(false);
+  }catch(e){ convo.push({role:'assistant', content:'error: '+e}); renderThread(false); }
+}
+
+function newChat(){
+  convo=[]; document.getElementById('thread').innerHTML='';
+  document.getElementById('answerCard').style.display='none';
 }
 
 document.getElementById('askBtn').onclick=ask;
 document.getElementById('traceBtn').onclick=trace;
-q.addEventListener('keydown',e=>{if(e.key==='Enter')trace();});
+document.getElementById('newChat').onclick=newChat;
+q.addEventListener('keydown',e=>{if(e.key==='Enter')ask();});
+loadCorpora();
 </script>
 </body>
 </html>
