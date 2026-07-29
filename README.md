@@ -83,6 +83,9 @@ order, with both scores), so you can see *why* an answer was given — not just 
 answer. The retrieval, order-lookup, and eval paths run with **no LLM**; only the
 final answer composition calls Groq.
 
+See **[`DECISIONS.md`](DECISIONS.md)** for the reasoning and trade-offs behind
+each choice (corpus, embeddings, reranker, honesty enforcement, tool-calling).
+
 ## Evaluation
 
 Retrieval and honesty are measured, not asserted. The gold set (`eval/gold_set.json`)
