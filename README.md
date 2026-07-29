@@ -8,12 +8,13 @@ explicit **"I don't know" handling** (no hallucinated answers), and a
 > document ingestion → chunking → embeddings → vector search → grounded
 > generation → evaluation → deployment.
 
-![CITE retrieval trace demo](docs/cite-retrieval-trace.gif)
+![CITE retrieval trace](docs/cite-retrieval-trace.jpg)
 
-*The demo exposes every retrieval: each result shows its raw **vector** score
-next to the **reranker** score. Notice the cross-encoder promoting the right
-doc above higher-vector-scored but less relevant ones — the ranking you'd
-otherwise never see.*
+*Every retrieval is inspectable: each result shows its raw **vector** score next
+to the **reranker** score. Here the cross-encoder pushes* Import Products *to #1
+(rerank 3.69) while demoting* Bulk Editor *— which had the **highest** vector
+score (0.73) but is the wrong doc. That reordering is the ranking you'd otherwise
+never see.*
 
 ## Why this exists
 
