@@ -8,6 +8,13 @@ explicit **"I don't know" handling** (no hallucinated answers), and a
 > document ingestion → chunking → embeddings → vector search → grounded
 > generation → evaluation → deployment.
 
+![CITE retrieval trace demo](docs/cite-retrieval-trace.gif)
+
+*The demo exposes every retrieval: each result shows its raw **vector** score
+next to the **reranker** score. Notice the cross-encoder promoting the right
+doc above higher-vector-scored but less relevant ones — the ranking you'd
+otherwise never see.*
+
 ## Why this exists
 
 Most "chat with your docs" demos stop at "it replies." The hard parts of RAG are
