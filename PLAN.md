@@ -1,6 +1,6 @@
 # PLAN — CITE (docs RAG · Medusa corpus) — 작업/인수인계 문서
 
-> 공개 레포: https://github.com/kstarmango/docs-rag-eval (PUBLIC) · 제품명 **CITE**
+> 공개 레포: https://github.com/kstarmango/cite (PUBLIC) · 제품명 **CITE** (옛 `docs-rag-eval`→리다이렉트됨)
 
 > 이 파일 = 프로젝트 단일 진실원. 다음 세션은 여기부터 읽고 이어간다.
 > (auto-memory `project_microsaas_ideation.md`에서 이 폴더를 가리킴)
@@ -67,7 +67,8 @@ Python / FastAPI(백엔드) · pgvector(벡터DB) · **Groq `llama-3.3-70b`(무�
   - **결정(2026-07-29)**: 2번째 코퍼스는 **추후 추가 예정**으로 보류(medusa 1개 유지). 이유=골드셋 없이 코퍼스만 늘리면 commodity 회귀 위험. 인프라는 완성돼 코퍼스만 붙이면 바로 살아남. UI에 "+ more coming soon" 표시.
 - [x] **README 첫인상 자산: Mermaid 아키텍처 다이어그램 + 트레이스 데모 GIF** (`baaebda`~`24c9da6`, 2026-07-29, 푸시·GitHub 렌더확인). peer 포폴 대비 유일 약점=겉포장(첫 5초). 다이어그램=이미지파일 아닌 Mermaid(안 썩음), 툴라우터→2단검색/주문/escalate+ingestion·eval 서브그래프. GIF=`docs/cite-retrieval-trace.gif`(6프레임, bulk import→**Bulk Editor가 vector 최고인데 리랭커가 강등, Import Products 승격**=우리 차별점 시각화), gif_creator 녹화(워터마크off), Groq 0. ⚠️Stack 표 부정확 발견·정정: Frontend "React"→실제 **바닐라 HTML/JS**, Backend/Frontend "(in progress)"→완료(공개레포 신뢰).
 - [x] **M3 검증 완료**(2026-07-29, 70b, Groq 리셋 후). 5케이스 전부 통과: ①주문조회(`lookup_order`, 10432 정확)·②문서 인용답변(`search_help_docs`, `[1][2]`+출처5)·③범위밖 거부("don't have that information", 검색은 돌되 LLM이 무관 판단해 거부=2겹 정직성 실증)·④주문번호 없이→지어내지 않고 이메일 요구·⑤**멀티턴 맥락유지**("When will it arrive?"의 'it'을 히스토리에서 #10432로 해석→ETA 답변). 프롬프트 튜닝 불필요. ⚠️답변/멀티턴 GIF는 선택(트레이스 GIF로 충분).
-- [ ] **다음**: 라이브 배포(Fly.io/Render) + 영어 케이스스터디(before/after·실패→개선) + DECISIONS.md. (선택) 2번째 평가된 코퍼스.
+- [x] **레포명 `docs-rag-eval`→`cite`** (2026-07-29). 7/28 결정(설명형 레포명+약어 제품명)을 **의도적으로 뒤집음**: 사용자 판단=브랜딩 일관성(제품명=레포명) 우선. 소문자 `cite`(레포 관례), README 내 제품명은 'CITE' 유지. GitHub 자동 리다이렉트로 옛 링크 유지. index.html 푸터·PLAN 헤더 URL 갱신. **DECISIONS.md 완료**(12 ADR, `b0bad15`).
+- [ ] **다음**: 라이브 배포(Fly.io/Render) + 영어 케이스스터디(before/after·실패→개선). (선택) 2번째 평가된 코퍼스.
 - [ ] 이후: 라이브 배포(Fly.io/Render, 라이브 URL) + 영어 케이스스터디(before/after 수치·실패→개선) + DECISIONS.md.
 - 이후: 에러분석 1회+실패유형표, 검색트레이스 UI노출, before/after 케이스스터디(영어·LinkedIn), 하이브리드+리랭커 측정개선.
   - ⚠️**즉시 고칠 라벨버그**: 범위밖 질문도 `grounded=True`로 찍힘(=top_score≥0.35일뿐, 실제론 LLM이 거부). `grounded`를 "실제 답변했나"로 재정의 필요(refusal 감지). ②의 일부.
