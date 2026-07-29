@@ -38,22 +38,43 @@ Additional evaluated corpora are planned.
 | LLM | Groq · `llama-3.3-70b-versatile` (OpenAI-compatible API) |
 | Backend | FastAPI *(in progress)* |
 | Frontend | React — chat UI + source/trace panel *(in progress)* |
-| Eval | Python harness — retrieval hit@k + no-answer accuracy *(in progress)* |
+| Eval | Python harness — Recall@k, MRR, refusal accuracy (46-question gold set) |
 | Deploy | Docker → Fly.io / Render *(planned)* |
 
-## Pipeline
+## Architecture
 
-```
-docs (.md) → [1] ingest → [2] chunk → [3] embed → [4] pgvector
-                                                       │
-question ──────────────────────► [5] semantic search ─┘
-                                        │
-                                 [6] grounded answer + citations
-                                     (or "I don't know")
+```mermaid
+flowchart TB
+    Q["User question<br/>+ conversation history"] --> A{"Assistant · Groq LLM<br/>tool router"}
+
+    A -->|how-to / policy| SH["search_help_docs"]
+    A -->|specific order| OL["lookup_order /<br/>find_orders_by_email"]
+    A -->|cannot answer| ESC["escalate to human"]
+
+    subgraph retr["search_help_docs — 2-stage retrieval"]
+        SH --> VS["Vector search · bge-small<br/>top-20 candidates"]
+        PG[("pgvector<br/>chunks tagged by corpus")] --> VS
+        VS --> RR["Cross-encoder rerank<br/>ms-marco-MiniLM-L-6-v2 → top-k"]
+    end
+
+    RR --> ANS["Grounded answer with [n] citations<br/>or refuse: not in the docs"]
+    OL --> ANS
+
+    subgraph ing["Ingestion — offline"]
+        DOC["Markdown / MDX docs"] --> CH["Header chunker<br/>path → citation URL"]
+        CH --> EM["Embed · bge-small 384d"] --> PG
+    end
+
+    subgraph ev["Evaluation — offline"]
+        GS["Gold set · 46 Q<br/>39 in-scope + 7 out-of-scope"] --> MET["Recall@k · MRR<br/>refusal accuracy"]
+    end
+    RR -.measured by.-> MET
 ```
 
-The basic loop ([1]–[6]) works end-to-end locally. The differentiation layer
-(numbers, retrieval traces, UI, deploy) is what the rest of the roadmap builds.
+Every retrieval is inspectable in the demo UI (raw vector rank vs. reranked
+order, with both scores), so you can see *why* an answer was given — not just the
+answer. The retrieval, order-lookup, and eval paths run with **no LLM**; only the
+final answer composition calls Groq.
 
 ## Evaluation
 
